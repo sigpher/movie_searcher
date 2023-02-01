@@ -4,42 +4,22 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let content = url_get().await?;
-    let jokes: Jokes = serde_json::from_str(&content)?;
-    if jokes.code == 200 {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"\d+").unwrap();
-        }
-        let count = RE.captures(&jokes.msg).unwrap();
-        println!("{} jokes found.", count.get(0).unwrap().as_str());
-        for (index, joke) in jokes.data.iter().enumerate() {
-            println!("{:02}:{}", index + 1, joke);
-        }
-    }
-    Ok(())
-}
-
-async fn url_get() -> Result<String, Box<dyn Error>> {
     let settings = Config::builder()
         .add_source(File::with_name("Setting.toml"))
         .build()?;
-    let url = format!(
-        "{}{}",
-        settings.get_string("web.base_url")?,
-        settings.get_int("web.num")?
-    );
-    let client = reqwest::Client::new();
-    let resp = client.get(&url).send().await?;
-    let content = resp.text().await?;
-    Ok(content)
-}
+    let url = "https://www.yingyinwu.com/search-%E5%A4%A9%E4%B8%8B.htm";
+    let threadlist = scraper::Selector::parse("ul.threadlist").unwrap();
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Jokes {
-    msg: String,
-    code: u32,
-    data: Vec<String>,
+    let client = reqwest::Client::new();
+    let resp = client.get(url).send().await?;
+    let content = resp.text().await?;
+    let document = scraper::Html::parse_document(&content);
+    let threadlist = scraper::Selector::parse("ul.threadlist").unwrap();
+    let titles = document.select(&threadlist).map(|x| x.inner_html());
+
+    titles.for_each(|item| println!("{}", item));
+
+    Ok(())
 }
