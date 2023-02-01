@@ -1,0 +1,3 @@
+[web]
+base_url = "https://autumnfish.cn/api/joke/list?num="
+num = 11
